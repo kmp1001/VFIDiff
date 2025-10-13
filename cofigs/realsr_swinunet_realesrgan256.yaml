@@ -1,0 +1,236 @@
+
+trainer:
+  target: trainer.TrainerDifIR
+
+model:
+  target: models.unet.UNetModelSwin
+  # ckpt_path: logs/2025-06-12-20-11/ema_ckpts/ema_model_50000.pth
+  ckpt_path: ~
+  # ckpt1_path: ../ResShift-journal/logs/2025-06-23-14-43/ema_ckpts/ema_model_37500.pth
+  # ckpt_path_2: ~
+  # ckpt1_path: ../ResShift-journal/logs/2025-06-04-09-47/ema_ckpts/ema_model_48000.pth
+  
+  
+  params:
+    image_size: 64
+    # image_size: 256
+    in_channels: 5
+    model_channels: 160
+    out_channels: 3
+    attention_resolutions: [64,32,16,8]
+    dropout: 0
+    channel_mult: [1, 2, 2, 4]
+    num_res_blocks: [2, 2, 2, 2]
+    conv_resample: True
+    dims: 2
+    use_fp16: False
+    num_head_channels: 32
+    use_scale_shift_norm: True
+    resblock_updown: False
+    swin_depth: 2
+    swin_embed_dim: 192
+    window_size: 8
+    mlp_ratio: 4
+    cond_lq: True
+    lq_size: 256
+    #lq_size: 256
+diffusion:
+  target: models.script_util.create_gaussian_diffusion
+  params:
+    sf: 1
+    schedule_name: exponential
+    schedule_kwargs:
+      power: 0.3
+    etas_end: 0.99
+    steps: 13
+    min_noise_level: 0.04
+    kappa: 2.0
+    weighted_mse: False
+    predict_type: xstart
+    timestep_respacing: ~
+    scale_factor: 1.0
+    normalize_input: True
+    latent_flag: True
+
+autoencoder:
+  target: ldm.models.autoencoder.VQModelTorch
+  ckpt_path: weights/autoencoder_vq_f4.pth
+  use_fp16: False
+  params:
+    embed_dim: 3
+    n_embed: 8192
+    ddconfig:
+      double_z: False
+      z_channels: 3
+      resolution: 256
+      in_channels: 3
+      out_ch: 3
+      ch: 128
+      ch_mult:
+      - 1
+      - 2
+      - 4
+      num_res_blocks: 2
+      attn_resolutions: []
+      dropout: 0.0
+      padding_mode: zeros
+
+# autoencoder:
+#   target: ldm.models.autoencoder.VQFlowNetInterface
+#   ckpt_path: /public/home/huangyihang/ResShift-journal/model2.1_cuda.pth  # 可为空，加载时从预训练权重加载
+#   use_fp16: True
+#   params:
+#     embed_dim: 3
+#     n_embed: 8192
+#     ddconfig:
+#       double_z: False
+#       z_channels: 3
+#       resolution: 256
+#       in_channels: 3
+#       out_ch: 3
+#       ch: 64
+#       ch_mult: [1,2,2,2,4]
+#       num_res_blocks: 1
+#       cond_type: max_cross_attn
+#       attn_type: max
+#       attn_resolutions: []
+#       dropout: 0.0
+#     lossconfig:
+#       target: torch.nn.Identity
+
+# degradation:
+#   sf: 1
+#   # the first degradation process
+#   resize_prob: [0.2, 0.7, 0.1]  # up, down, keep
+#   resize_range: [0.15, 1.5]
+#   gaussian_noise_prob: 0.5
+#   noise_range: [1, 30]
+#   poisson_scale_range: [0.05, 3.0]
+#   gray_noise_prob: 0.4
+#   jpeg_range: [30, 95]
+
+#   # the second degradation process
+#   second_order_prob: 0.5
+#   second_blur_prob: 0.8
+#   resize_prob2: [0.3, 0.4, 0.3]  # up, down, keep
+#   resize_range2: [0.3, 1.2]
+#   gaussian_noise_prob2: 0.5
+#   noise_range2: [1, 25]
+#   poisson_scale_range2: [0.05, 2.5]
+#   gray_noise_prob2: 0.4
+#   jpeg_range2: [30, 95]
+
+#   gt_size: 256
+#   resize_back: False
+#   use_sharp: False
+
+data:
+  train:
+    type: frame_interpolation
+    params:
+#      dir_paths: [ ]
+      dtype: float32
+      gt_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/gt_train.txt'
+      lq_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/lq_train.txt'
+      mid_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/mid_train.txt'
+      im2_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/im2_train.txt'
+      im3_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/im3_train.txt'
+      im5_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/im5_train.txt'
+      im6_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal/im6_train.txt'
+#      txt_file_path: [
+#                     '/root/autodl-tmp/imagenet256/output.txt'
+#                     ]
+#      im_exts: ['png', ]
+      io_backend:
+        type: disk
+      # blur_kernel_size: 21
+      # kernel_list: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
+      # kernel_prob: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+      # sinc_prob: 0.1
+      # blur_sigma: [0.2, 3.0]
+      # betag_range: [0.5, 4.0]
+      # betap_range: [1, 2.0]
+
+      # blur_kernel_size2: 15
+      # kernel_list2: ['iso', 'aniso', 'generalized_iso', 'generalized_aniso', 'plateau_iso', 'plateau_aniso']
+      # kernel_prob2: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+      # sinc_prob2: 0.1
+      # blur_sigma2: [0.2, 1.5]
+      # betag_range2: [0.5, 4.0]
+      # betap_range2: [1, 2.0]
+
+      # final_sinc_prob: 0.8
+
+      gt_size: 256
+      crop_pad_size: 300
+      use_hflip: True
+      use_rot: False
+      rescale_gt: True
+  val:
+    type: frame_interpolation
+    params:
+#      dir_path: /root/autodl-tmp/testdata/Val_SR/lq
+#      im_exts: png
+      dtype: float32
+      gt_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/gt_validate.txt'
+      lq_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/lq_validate.txt'
+      mid_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/mid_validate.txt'
+      im2_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/im2_validate.txt'
+      im3_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/im3_validate.txt'
+      im5_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/im5_validate.txt'
+      im6_txt_file: '/root/autodl-tmp/VFIDiff-journal/ResShift-journal_original/im6_validate.txt'
+      io_backend:
+        type: 'disk'
+      gt_size: 256
+      transform_type: default
+      transform_kwargs:
+          mean: 0.5
+          std: 0.5
+#      extra_dir_path: testdata/Val_SR/gt
+      extra_transform_type: default
+      extra_transform_kwargs:
+          mean: 0.5
+          std: 0.5
+      recursive: False
+
+train:
+  # learning rate
+  flow_cache_dir: "/public/home/huangyihang/flow_cache"  # 指定数据盘上的缓存目录
+  lambda_mid: 1.0  # 新增参数，用于控制中间帧损失的权重
+  lr: 6e-5                      # learning rate
+  lr_min: 1e-5                     # learning rate
+  lr_schedule: cosin
+  warmup_iterations: 3000
+  # dataloader
+  batch: [48, 16]
+  #debug
+  # batch: [48, 4]
+  microbatch: 8  #4
+  # microbatch: 4
+  num_workers: 4
+  prefetch_factor: 2
+  # optimization settings
+  weight_decay: 0
+  ema_rate: 0.999
+  iterations: 150000
+#  iterations: 300000            # total iterations
+
+  save_freq: 1000 
+  # log_freq: [200, 2000, 1]         # [training loss, training images, val images]
+  log_freq: [200, 2000, 1]         # [training loss, training images, val images]
+  local_logging: True           # manually save images
+  tf_logging: False             # tensorboard logging
+  # validation settings
+  use_ema_val: True
+  val_freq: ${train.save_freq}
+  val_y_channel: True
+  val_resolution: ${model.params.lq_size}
+  val_padding_mode: reflect
+  # training2setting
+  use_amp: True                # amp training
+  seed: 123456                 # random seed
+  global_seeding: False
+  # model compile
+  compile:
+    flag: False   #之前是False
+    mode: reduce-overhead      # default, reduce-overhead
