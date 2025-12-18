@@ -61,7 +61,7 @@ These functions define how samples are generated across diffusion timesteps.
 
 ---
 
-## 🏋️ Training
+## 🏋️ Training（in VFIDiff，not VFIDiff_Normal)
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 torchrun \
@@ -77,8 +77,8 @@ CUDA_VISIBLE_DEVICES=0 torchrun \
 
 ```bash
 python inference_resshift.py \
-  -i /root/autodl-tmp/testdata/Val_SR/lq \
-  -o /root/autodl-tmp/fasttest \
+  -i testdata/Val_SR/lq \
+  -o fasttest \
   --task realsr \
   --scale 4 \
   --version v3
