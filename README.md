@@ -73,7 +73,7 @@ CUDA_VISIBLE_DEVICES=0 torchrun \
 
 ---
 
-## 🧪 Inference
+## 🧪 Inference（Note: in VFIDiff_normal)
 
 ```bash
 python inference_VFIDiff.py \
