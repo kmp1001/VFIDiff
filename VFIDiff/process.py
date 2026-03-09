@@ -6,33 +6,34 @@ from pathlib import Path
 
 def parse_arguments():
     """
-    解析命令行参数。
+    Parse command-line arguments.
     """
     parser = argparse.ArgumentParser(
-        description='将三个文件夹中的对应 PNG 图片按 8:2 比例进行一致性分割，并生成六个文本文件。')
-    parser.add_argument('--folder1', type=str, required=True, help='第一个文件夹的路径')
-    parser.add_argument('--folder2', type=str, required=True, help='第二个文件夹的路径')
-    parser.add_argument('--folder3', type=str, required=True, help='第三个文件夹的路径')
-    parser.add_argument('--output_dir', type=str, required=True, help='输出文本文件的目录')
-    parser.add_argument('--train_ratio', type=float, default=0.8, help='训练集比例，默认为0.8')
-    parser.add_argument('--seed', type=int, default=42, help='随机种子，默认为42以保证可重复性')
+        description='Consistently split matching PNG images from three folders into train/test sets with an 8:2 ratio and generate six text files.'
+    )
+    parser.add_argument('--folder1', type=str, required=True, help='Path to the first folder')
+    parser.add_argument('--folder2', type=str, required=True, help='Path to the second folder')
+    parser.add_argument('--folder3', type=str, required=True, help='Path to the third folder')
+    parser.add_argument('--output_dir', type=str, required=True, help='Directory for output text files')
+    parser.add_argument('--train_ratio', type=float, default=0.8, help='Training set ratio, default is 0.8')
+    parser.add_argument('--seed', type=int, default=42, help='Random seed, default is 42 for reproducibility')
     return parser.parse_args()
 
 
 def get_png_filenames(folder):
     """
-    获取指定文件夹中所有 PNG 文件的名称（不包含路径）。
+    Get the names of all PNG files in the specified folder (without paths).
     """
     folder_path = Path(folder)
     if not folder_path.is_dir():
-        raise ValueError(f"路径 {folder} 不是一个有效的文件夹。")
+        raise ValueError(f"Path {folder} is not a valid folder.")
     png_files = sorted([f.name for f in folder_path.glob('*.png') if f.is_file()])
     return png_files
 
 
 def verify_filenames(filenames1, filenames2, filenames3):
     """
-    验证三个文件夹中的 PNG 文件名称是否完全一致。
+    Verify that the PNG filenames in the three folders are exactly the same.
     """
     set1 = set(filenames1)
     set2 = set(filenames2)
@@ -42,21 +43,21 @@ def verify_filenames(filenames1, filenames2, filenames3):
         missing_in_3 = set1 - set3
         missing_in_1 = set2 - set1
         missing_in_3_from_1 = set3 - set1
-        error_message = "三个文件夹中的 PNG 文件名称不完全一致。\n"
+        error_message = "PNG filenames in the three folders do not match exactly.\n"
         if missing_in_2:
-            error_message += f"在文件夹2中缺少: {missing_in_2}\n"
+            error_message += f"Missing in folder2: {missing_in_2}\n"
         if missing_in_3:
-            error_message += f"在文件夹3中缺少: {missing_in_3}\n"
+            error_message += f"Missing in folder3: {missing_in_3}\n"
         if missing_in_1:
-            error_message += f"在文件夹1中缺少: {missing_in_1}\n"
+            error_message += f"Missing in folder1: {missing_in_1}\n"
         if missing_in_3_from_1:
-            error_message += f"在文件夹1中缺少: {missing_in_3_from_1}\n"
+            error_message += f"Missing in folder1: {missing_in_3_from_1}\n"
         raise ValueError(error_message)
 
 
 def split_filenames(filenames, train_ratio=0.8, seed=42):
     """
-    将文件名列表按指定比例分为训练集和测试集。
+    Split the filename list into training and testing sets according to the specified ratio.
     """
     random.seed(seed)
     shuffled = filenames.copy()
@@ -69,7 +70,7 @@ def split_filenames(filenames, train_ratio=0.8, seed=42):
 
 def write_list_to_txt(file_list, file_path):
     """
-    将文件路径列表写入指定的文本文件，每行一个路径。
+    Write a list of file paths to a text file, one path per line.
     """
     with open(file_path, 'w') as f:
         for item in file_list:
@@ -79,41 +80,41 @@ def write_list_to_txt(file_list, file_path):
 def main():
     args = parse_arguments()
 
-    # 获取三个文件夹中的 PNG 文件名
+    # Get PNG filenames from the three folders
     filenames1 = get_png_filenames(args.folder1)
     filenames2 = get_png_filenames(args.folder2)
     filenames3 = get_png_filenames(args.folder3)
 
-    # 验证三个文件夹中的文件名是否一致
+    # Verify that the filenames in the three folders are identical
     try:
         verify_filenames(filenames1, filenames2, filenames3)
     except ValueError as e:
         print(e)
         return
 
-    # 使用其中一个文件夹的文件名进行分割（因为它们是相同的）
+    # Use one folder's filenames for splitting since they are identical
     all_filenames = filenames1
     train_filenames, test_filenames = split_filenames(all_filenames, args.train_ratio, args.seed)
 
-    # 准备输出目录
+    # Prepare the output directory
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 为每个文件夹生成 train.txt 和 test.txt
+    # Generate train.txt and test.txt for each folder
     folders = [args.folder1, args.folder2, args.folder3]
     for idx, folder in enumerate(folders, start=1):
         folder_path = Path(folder)
-        # 训练集路径
+        # Training set paths
         train_paths = [str(folder_path / fname) for fname in train_filenames]
-        # 测试集路径
+        # Testing set paths
         test_paths = [str(folder_path / fname) for fname in test_filenames]
-        # 输出文件路径
+        # Output file paths
         train_txt = output_dir / f"folder{idx}_train.txt"
         test_txt = output_dir / f"folder{idx}_test.txt"
-        # 写入文本文件
+        # Write to text files
         write_list_to_txt(train_paths, train_txt)
         write_list_to_txt(test_paths, test_txt)
-        print(f"已为文件夹{idx}生成 {train_txt} 和 {test_txt}")
+        print(f"Generated {train_txt} and {test_txt} for folder{idx}")
 
 
 if __name__ == "__main__":
