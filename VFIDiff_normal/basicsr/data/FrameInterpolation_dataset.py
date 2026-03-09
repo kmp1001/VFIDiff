@@ -73,9 +73,8 @@ class FrameInterpolationDataset(data.Dataset):
         # Define augmentation transforms for testing
         if self.mode == 'testing':
             self.test_aug = albumentations.Compose([
-                #按照保持宽高比的原则，把图像缩放，使得它的短边（最小边）恰好等于 gt_size（opt['gt_size']），长边会按比例放大或缩小到不小于 gt_size。
+        
                 albumentations.SmallestMaxSize(max_size=opt['gt_size']),
-                #再从缩放后的图像正中间裁下一个大小为 gt_size×gt_size 的正方形。
                 albumentations.CenterCrop(opt['gt_size'], opt['gt_size']),
             ])
 
