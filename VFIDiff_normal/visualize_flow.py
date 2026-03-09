@@ -253,10 +253,6 @@ def warp(flow1, flow2, img):  # H,W,C  h*w*2
 
     valid = (sx >= 0) & (sx < height - 1) & (sy >= 0) & (sy < width - 1)  # H* W 512 x 512 uint8
 
-    # sx_mat = np.dstack((sx, sx + 1, sx, sx + 1)).clip(0, height - 1)
-    # sy_mat = np.dstack((sy, sy, sy + 1, sy + 1)).clip(0, width - 1)
-    # sxsy_mat = np.abs((1 - np.abs(sx_mat - dx[:, :, np.newaxis])) *
-    #                   (1 - np.abs(sy_mat - dy[:, :, np.newaxis])))
 
     sx_mat = torch.stack((sx, sx + 1, sx, sx + 1), dim=2).clamp(0, height - 1)  # torch.float32
     sy_mat = torch.stack((sy, sy, sy + 1, sy + 1), dim=2).clamp(0, width - 1)
@@ -283,96 +279,41 @@ def warp(flow1, flow2, img):  # H,W,C  h*w*2
 
 
 def main():
-    # prev = cv2.imread('one.png')
-    # cur = cv2.imread('two.png')
     model = build_model()
     image1 = frame_utils.read_gen('im1.png')
     image2 = frame_utils.read_gen('im7.png')
     image1 = np.array(image1).astype(np.uint8)[..., :3]
     image2 = np.array(image2).astype(np.uint8)[..., :3]
-    # if not keep_size:
-    #     dsize = compute_adaptive_image_size(image1.shape[0:2])
-    #     image1 = cv2.resize(image1, dsize=dsize, interpolation=cv2.INTER_CUBIC)
-    #     image2 = cv2.resize(image2, dsize=dsize, interpolation=cv2.INTER_CUBIC)
     image1 = torch.from_numpy(image1).permute(2, 0, 1).float()
     image2 = torch.from_numpy(image2).permute(2, 0, 1).float()
     flow1 = compute_optical_flow(model,image1,image2)
     flow2 = compute_optical_flow(model, image2, image1)
-    # flow1 = pickle.loads(gzip.GzipFile('forward_0_5.pkl', 'rb').read())  # 'forward_0_5.pkl'
-    # flow2 = pickle.loads(gzip.GzipFile('backward_5_0.pkl', 'rb').read())  # 'backward_5_0.pkl'
     print("read flow and image")
-    # warp(forward, backward, 0th)  #  0 -> 1
-    # warp(backward, forward, 1th)  #  1 -> 0
     flow1 = torch.from_numpy(flow1)
     flow2 = torch.from_numpy(flow2)
     prev = image1.contiguous()  # -> [H, W, C]
     cur  = image2.contiguous()  # -> [H, W, C]
-    # 预备输出目录
     out_dir = 'warp_steps'
     os.makedirs(out_dir, exist_ok=True)
     
-    # 每一步都用 1/13 的光流增量来 warp
     step_flow1 = flow1 / 13.0
     step_flow2 = flow2 / 13.0
     result = image1.contiguous()  # [3,H,W], float
     
     for i in range(1, 14):   # 1,2,...,13
-        # warp 上一步结果
-        result = warp(step_flow1, step_flow2, result)  # 仍然 [3,H,W]
+        # warp 
+        result = warp(step_flow1, step_flow2, result)  # [3,H,W]
         
-        # 转 HWC、numpy、uint8
+        #  HWC、numpy、uint8
         res_hwc = result.permute(1, 2, 0).numpy()      # [H,W,3]
-        res_hwc = np.clip(res_hwc, 0, 255).astype(np.uint8)  # 确保合法
+        res_hwc = np.clip(res_hwc, 0, 255).astype(np.uint8)  
         # RGB->BGR
         res_bgr = res_hwc[..., ::-1]
         
-        # 保存成 interp_01.png ... interp_13.png
+        # interp_01.png ... interp_13.png
         cv2.imwrite(os.path.join(out_dir, f'interp_{i:02d}.png'), res_bgr)
-    # # 得到 warp 后的 numpy array，形状 (H, W, 3)，值域大概在 [0,255]
-    
-    # w0 = warp(flow1, flow2, prev).permute(1, 2, 0).numpy()
-    # w1 = warp(flow2, flow1, cur).permute(1, 2, 0).numpy()
-    
-    # # 1) Clip & 转 uint8（如果它是 float 的话）
-    # # w0 = w0.permute(1, 2, 0)
-    # # w1 = w1.permute(1, 2, 0)
-    # w0 = np.clip(w0, 0, 255).astype(np.uint8)
-    # w1 = np.clip(w1, 0, 255).astype(np.uint8)
-    
-    # # 2) RGB -> BGR
-    # w0 = w0[..., ::-1]
-    # w1 = w1[..., ::-1]
 
-    # # 3) 写磁盘
-    # cv2.imwrite('warp_forward.png', w0)
-    # cv2.imwrite('warp_backward.png', w1)
-    # w0 = warp(flow1, flow2, prev).numpy()  # 0->1
-    # w1 = warp(flow2, flow1, cur).numpy()  # 1->0
-    # print("finish warp")
-    # cv2.imwrite('warp_forward.png', w0)
     # cv2.imwrite('warp_backward.png', w1)
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--eval_type', default='sintel')
-    # parser.add_argument('--root_dir', default='.')
-    # parser.add_argument('--sintel_dir', default='datasets/Sintel/test/clean')
-    # parser.add_argument('--seq_dir', default='demo_data/mihoyo')
-    # parser.add_argument('--start_idx', type=int, default=1)     # starting index of the image sequence
-    # parser.add_argument('--end_idx', type=int, default=1200)    # ending index of the image sequence
-    # parser.add_argument('--viz_root_dir', default='viz_results')
-    # parser.add_argument('--keep_size', action='store_true')     # keep the image size, or the image will be adaptively resized.
-    #
-    # args = parser.parse_args()
-    #
-    # root_dir = args.root_dir
-    # viz_root_dir = args.viz_root_dir
-    #
-    # model = build_model()
-    #
-    # if args.eval_type == 'sintel':
-    #     img_pairs = process_sintel(args.sintel_dir)
-    # elif args.eval_type == 'seq':
-    #     img_pairs = generate_pairs(args.seq_dir, args.start_idx, args.end_idx)
-    # with torch.no_grad():
-    #     visualize_flow(root_dir, viz_root_dir, model, img_pairs, args.keep_size)
+   
     main()
