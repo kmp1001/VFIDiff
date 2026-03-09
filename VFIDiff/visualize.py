@@ -11,11 +11,9 @@ import matplotlib.pyplot as plt
 import imageio
 import itertools
 
-# 分布式相关
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-# FlowFormerPlusPlus 模块
 from FlowformerPlusPlus.configs.submissions import get_cfg
 from FlowformerPlusPlus.core.utils.misc import process_cfg
 from FlowformerPlusPlus.core.FlowFormer import build_flowformer
@@ -72,8 +70,6 @@ def compute_flow(model, image1, image2, weights=None):
     print(f"computing flow...")
 
     image_size = image1.shape[1:]
-
-    # 这里默认计算单对图像，如果外部已有batch，则采用flow_estimate函数
     image1, image2 = image1[None].cuda(), image2[None].cuda()
 
     hws = compute_grid_indices(image_size)
@@ -154,10 +150,8 @@ def build_model():
 
     return model
 
-# 新增函数：供外部调用
 def compute_optical_flow(model, image1, image2):
     """
-    供外部调用的光流计算函数
 
     Args:
         model: 已加载并设置为eval模式的FlowFormerPlusPlus模型。
@@ -167,19 +161,15 @@ def compute_optical_flow(model, image1, image2):
     Returns:
         flow: torch.Tensor, 形状为 [B, 2, H, W]，每一对图像计算得到的光流。
     """
-    # 将输入转移到GPU（假设模型在GPU上）
     image1 = image1.cuda()
     image2 = image2.cuda()
     
-    # 利用InputPadder对图像进行padding操作，确保尺寸符合要求
     padder = InputPadder(image1.shape)
     image1, image2 = padder.pad(image1, image2)
     
-    # 计算光流，假设模型输出的第一个结果为光流
     with torch.no_grad():
         flow_pre, _ = model(image1, image2)
     
-    # 去除padding，还原到原始尺寸
     flow = padder.unpad(flow_pre)
     return flow
 
@@ -189,13 +179,10 @@ def visualize_flow(root_dir, viz_root_dir, model, img_pairs, keep_size):
         fn1, fn2 = img_pair
         print(f"processing {fn1}, {fn2}...")
 
-        # 1. 读取图像
         image1, image2, viz_fn = prepare_image(root_dir, viz_root_dir, fn1, fn2, keep_size)
 
-        # 2. 计算光流
         flow = compute_flow(model, image1, image2, weights)
 
-        # 3. 光流可视化并保存
         flow_img = flow_viz.flow_to_image(flow)
         print(f"[DEBUG] Saving flow visualization to: {viz_fn}")
         assert cv2.imwrite(viz_fn, flow_img[:, :, [2, 1, 0]]), f"Failed to save {viz_fn}"
@@ -217,12 +204,10 @@ def visualize_flow(root_dir, viz_root_dir, model, img_pairs, keep_size):
             borderMode=cv2.BORDER_REPLICATE  
         )
 
-        # 5. 保存 warp 图像
         warp_fn = viz_fn.replace('.png', '_warped.png')
         print(f"[DEBUG] Saving warped image to: {warp_fn}")
         cv2.imwrite(warp_fn, warped)
 
-        # 6. 保存差异图像
         image2_np = image2.permute(1, 2, 0).cpu().numpy()
         if image2_np.max() <= 1.0:
             image2_np = (image2_np * 255).clip(0, 255).astype(np.uint8)
