@@ -2,8 +2,6 @@
 
 
 import sys
-sys.path.append('autodl-tmp/VFIDiff-journal/ResShift-journal_original/FlowformerPlusPlus')
-sys.path.append('autodl-tmp/VFIDiff-journal/ResShift-journal_original/FlowformerPlusPlus/core')
 
 from PIL import Image
 from glob import glob
