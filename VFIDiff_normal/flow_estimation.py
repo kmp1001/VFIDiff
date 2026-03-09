@@ -282,18 +282,6 @@ def generate_pairs(dirname, start_idx, end_idx):
 
 @torch.no_grad()
 def compute_optical_flow(model, image1, image2, sigma=0.05):
-    """
-    外部计算光流返回光流的函数
-
-    参数：
-      - model: 预训练的 FlowFormer 模型
-      - image1: 第一个图像张量，[B, 3, H, W]
-      - image2: 第二个图像张量，[B, 3, H, W]
-      - sigma: 权重计算的标准差
-
-    返回：
-      - flow: 光流张量，[B, 2, H, W]，尺寸与输入图像一致
-    """
     image_size = image1.shape[1:]
 
     hws = compute_grid_indices(image_size)
@@ -312,9 +300,9 @@ if __name__ == '__main__':
     parser.add_argument('--start_idx', type=int, default=1)     # starting index of the image sequence
     parser.add_argument('--end_idx', type=int, default=1200)      # ending index of the image sequence
     parser.add_argument('--viz_root_dir', default='viz_results')
-    parser.add_argument('--keep_size', action='store_true')      # 是否保留原始图像尺寸，否则进行自适应 resize
-    parser.add_argument('--img1_path', default=None)             # pair 模式下第一个图像路径
-    parser.add_argument('--img2_path', default=None)             # pair 模式下第二个图像路径
+    parser.add_argument('--keep_size', action='store_true')     
+    parser.add_argument('--img1_path', default=None)            
+    parser.add_argument('--img2_path', default=None)             
 
     args = parser.parse_args()
 
