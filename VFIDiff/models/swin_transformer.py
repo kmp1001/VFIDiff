@@ -124,22 +124,18 @@ class WindowAttention(nn.Module):
         q = q * self.scale
         attn = (q @ k.transpose(-2, -1).contiguous())
 
-        # 克隆 relative_position_index 以避免原地修改
         relative_position_index = self.relative_position_index.view(-1).clone()
 
-        # 使用克隆后的索引进行索引操作
         assert relative_position_index.max().item() < self.relative_position_bias_table.size(0), f"{relative_position_index.max()} vs {self.relative_position_bias_table.size(0)}"
         assert relative_position_index.min().item() >= 0
         relative_position_bias = self.relative_position_bias_table[relative_position_index].view(
             self.window_size[0] * self.window_size[1],
             self.window_size[0] * self.window_size[1],
             -1
-        ).contiguous()  # 保证内存连续性
+        ).contiguous()  
 
-        # 重新排列维度
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
 
-        # 确保相对位置偏置的 dtype 与 attn 一致，并且不进行原地操作
         relative_position_bias = relative_position_bias.unsqueeze(0).to(attn.dtype)
         attn = attn + relative_position_bias
 
@@ -157,39 +153,6 @@ class WindowAttention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
-
-    # def forward(self, x, mask=None):
-    #     """
-    #     Args:
-    #         x: input features with shape of (num_windows*B, N, C)
-    #         mask: (0/-inf) mask with shape of (num_windows, Wh*Ww, Wh*Ww) or None
-    #     """
-    #     B_, N, C = x.shape
-    #     qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
-    #     q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple), B_ x H x N x C
-    #
-    #     q = q * self.scale
-    #     attn = (q @ k.transpose(-2, -1).contiguous())
-    #
-    #     relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
-    #         self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1)  # Wh*Ww,Wh*Ww,nH
-    #     relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
-    #     attn = attn + relative_position_bias.unsqueeze(0).to(attn.dtype)
-    #
-    #     if mask is not None:
-    #         nW = mask.shape[0]
-    #         attn = attn.view(B_ // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
-    #         attn = attn.view(-1, self.num_heads, N, N)
-    #         attn = self.softmax(attn)
-    #     else:
-    #         attn = self.softmax(attn)
-    #
-    #     attn = self.attn_drop(attn)
-    #
-    #     x = (attn @ v).transpose(1, 2).contiguous().reshape(B_, N, C)
-    #     x = self.proj(x)
-    #     x = self.proj_drop(x)
-    #     return x
 
     def extra_repr(self) -> str:
         return f'dim={self.dim}, window_size={self.window_size}, num_heads={self.num_heads}'
@@ -262,17 +225,15 @@ class SwinTransformerBlock(nn.Module):
         # calculate attention mask for SW-MSA
         H, W = x_size
         
-        # 如果没有shift或者尺寸太小，不需要mask
+    
         if self.shift_size <= 0 or H <= self.window_size or W <= self.window_size:
             return None
             
-        # 确保H和W都能被window_size整除，否则window_partition会失败
         if H % self.window_size != 0 or W % self.window_size != 0:
             return None
             
         img_mask = torch.zeros((1, 1, H, W), dtype=torch.float32)  # 1 1 H W (B, C, H, W)
         
-        # 使用原始的简单方法
         h_slices = (slice(0, -self.window_size),
                     slice(-self.window_size, -self.shift_size),
                     slice(-self.shift_size, None))
@@ -455,7 +416,6 @@ class BasicLayer(nn.Module):
         self.depth = depth
         self.use_checkpoint = use_checkpoint
 
-        # 调试信息
         if isinstance(img_size, (int, float)) and img_size <= 0:
             raise ValueError(f"BasicLayer: Invalid img_size={img_size}")
         elif isinstance(img_size, (tuple, list)) and (img_size[0] <= 0 or img_size[1] <= 0):
@@ -472,11 +432,11 @@ class BasicLayer(nn.Module):
         input_resolution = self.patch_embed.patches_resolution
         self.input_resolution = input_resolution
         
-        # 添加调试信息
+       
         if input_resolution[0] <= 0 or input_resolution[1] <= 0:
             raise ValueError(f"BasicLayer: Invalid input_resolution={input_resolution}, img_size={img_size}, patch_size={patch_size}")
         
-        # 检查input_resolution是否有效
+     
         if input_resolution[0] <= 0 or input_resolution[1] <= 0:
             raise ValueError(f"Invalid input_resolution: {input_resolution}, img_size: {img_size}, patch_size: {patch_size}")
 
@@ -551,8 +511,7 @@ class PatchEmbed(nn.Module):
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
         patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
-        
-        # 确保patches_resolution有效
+    
         if patches_resolution[0] <= 0 or patches_resolution[1] <= 0:
             raise ValueError(f"Invalid patches_resolution: {patches_resolution}, img_size: {img_size}, patch_size: {patch_size}")
         self.img_size = img_size
